@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+
+body {
+    font-size: 18px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    /* font-family: "Roboto", sans-serif; */
+}
+
+:root {
+    --bg-nav-color: rgb(33, 62, 96);
+    --hover-nav-color: rgb(230, 140, 58);
+    --bg-color: #F4F2EF;
+    --bg-cancel-color: rgb(98, 98, 98);
+    --text-color: rgb(0, 0, 0);
+    --nav-text-color: rgb(255, 255, 255);
+    --bg-card-color: #213e60;
+    --bg-card-opacity-color: rgb(56, 93, 135);
+    --text-card-opacity-color: rgba(255, 255, 255, 0.736);
+    --box-shadow-color: rgba(33, 62, 96, 0.3);
+    --btn-hover: rgb(46, 98, 157);
+}
