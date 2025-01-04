@@ -45,6 +45,6 @@
     font-size: 14px;
 }
 
-.profile-info ul {
+.profile-info ul::placeholder {
     padding-left: 20px;
 } 

@@ -1,16 +1,15 @@
-// middleware/auth.js
-import { refreshAccessToken } from '~/utils/auth';
-
 export default defineNuxtRouteMiddleware(async (to, from) => {
-  if (process.server) return;
+  if (process.server) return;  // Не выполняем код на сервере
 
-  let token = localStorage.getItem('access_token');
+  if (process.client) {
+    let token = localStorage.getItem('access_token');
+    if (!token) {
+      // Попытка обновить токен, если он отсутствует
+      token = await refreshAccessToken();
+    }
 
-  if (!token) {
-    token = await refreshAccessToken(); // Попытка обновления токена
-  }
-
-  if (!token && to.path !== '/auth/SignIn') {
-    return navigateTo('/');
+    if (!token && to.path !== '/auth/SignIn') {
+      return navigateTo('/');  // Перенаправление, если токен отсутствует
+    }
   }
 });

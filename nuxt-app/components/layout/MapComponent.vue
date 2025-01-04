@@ -53,12 +53,6 @@
           <div class="chart">
             <canvas id="childrenChart"></canvas>
           </div>
-
-          <!-- Круговая диаграмма по пособиям -->
-          <div class="chart">
-            <canvas id="benefitsChart"></canvas>
-          </div>
-
         </div>
       </div>
     </div>
@@ -66,8 +60,14 @@
 </template>
 
 <script>
-import { Chart } from "chart.js";
-
+import {
+  Chart,
+  PieController,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+Chart.register(PieController, ArcElement, Tooltip, Legend);
 export default {
   data() {
     return {
@@ -148,7 +148,7 @@ export default {
       analyticsData: null,
       genderChartInstance: null,
       ageChartInstance: null,
-      childrenChartInstance: null, // Новый график для детей
+      childrenChartInstance: null,
     };
   },
   methods: {
@@ -164,6 +164,12 @@ export default {
     },
     async handleRegionClick(region) {
       const encodedRegionName = encodeURIComponent(region.region);
+      const token = localStorage.getItem('access_token'); // Получаем токен из localStorage
+
+      if (!token) {
+        console.error("Токен не найден. Пожалуйста, войдите в систему.");
+        return;
+      }
 
       if (this.selectedRegion === region.id) {
         return;
@@ -174,24 +180,40 @@ export default {
 
       try {
         const [genderResponse, ageResponse, childrenResponse] = await Promise.all([
-          fetch(`http://127.0.0.1:8000/api/analytics/region/${encodedRegionName}/gender/`).then((res) => res.json()),
-          fetch(`http://127.0.0.1:8000/api/analytics/region/${encodedRegionName}/age/`).then((res) => res.json()),
-          fetch(`http://127.0.0.1:8000/api/analytics/region/${encodedRegionName}/children/`).then((res) => res.json()),
+          fetch(`http://127.0.0.1:8000/api/analytics/region/${encodedRegionName}/gender/`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            }
+          }).then((res) => res.json()),
+          fetch(`http://127.0.0.1:8000/api/analytics/region/${encodedRegionName}/age/`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            }
+          }).then((res) => res.json()),
+          fetch(`http://127.0.0.1:8000/api/analytics/region/${encodedRegionName}/children/`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            }
+          }).then((res) => res.json()),
         ]);
 
-        this.analyticsData = {
-          gender: genderResponse,
-          age: ageResponse,
-          children: childrenResponse.children_stats.distribution,
+        // Проверка данных
+        if (genderResponse && ageResponse && childrenResponse) {
+          this.analyticsData = {
+            gender: genderResponse,
+            age: ageResponse,
+            children: childrenResponse.children_stats?.distribution || {},
+          };
 
-        };
-
-        // Обновляем графики
-        this.$nextTick(() => {
-          this.renderGenderChart(genderResponse.gender_distribution);
-          this.renderAgeChart(ageResponse.age_distribution);
-          this.renderChildrenChart(childrenResponse.children_stats.distribution);
-        });
+          // Обновление графиков
+          this.$nextTick(() => {
+            this.renderGenderChart(genderResponse.gender_distribution);
+            this.renderAgeChart(ageResponse.age_distribution);
+            this.renderChildrenChart(childrenResponse.children_stats.distribution);
+          });
+        } else {
+          console.error("Ошибка: не получены все данные от API");
+        }
       } catch (error) {
         console.error("Ошибка загрузки данных:", error);
       }
@@ -225,10 +247,10 @@ export default {
       this.ageChartInstance = new Chart(ctx, {
         type: "bar",
         data: {
-          labels: Object.keys(data.age_groups),
+          labels: ["Меньше 18 лет", "18-25 лет", "26-40 лет", "41-60 лет", "Больше 100 лет"],
           datasets: [
             {
-              label: "Возрастные группы",
+              label: "Возрастное распределение",
               data: Object.values(data.age_groups),
               backgroundColor: "rgba(54,162,235,0.6)",
               borderColor: "rgb(54,162,235)",
@@ -243,14 +265,14 @@ export default {
             x: {
               title: {
                 display: true,
-                text: "Возрастные группы",
+                text: "",
               },
             },
             y: {
               beginAtZero: true,
               title: {
                 display: true,
-                text: "Количество людей",
+                text: ""
               },
             },
           },
@@ -278,7 +300,7 @@ export default {
           labels: Object.keys(data).map((key) => key.replace("_children", " детей")),
           datasets: [
             {
-              label: "Количество детей",
+              label: "Гистограмма количества людей по числу детей",
               data: Object.values(data),
               backgroundColor: "rgba(79,75,192,0.6)",
               borderColor: "rgb(79,75,192)",
@@ -293,14 +315,14 @@ export default {
             x: {
               title: {
                 display: true,
-                text: "Число детей",
+                text: "",
               },
             },
             y: {
               beginAtZero: true,
               title: {
                 display: true,
-                text: "Количество пользователей",
+                text: "",
               },
             },
           },
@@ -313,12 +335,15 @@ export default {
 
 
 <style>
-.content {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 20px;
-  align-items: stretch;
+
+.chart {
+  border: 2px solid #213e60;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  padding: 10px;
 }
+
+
 
 .map-container {
   display: flex;
@@ -333,11 +358,11 @@ export default {
 
 
 .map-svg {
-  width: 100%; /* Растягиваем на всю ширину родителя */
-  height: auto; /* Пропорциональная высота */
-  max-height: 600px; /* Установите ограничение по высоте, если нужно */
+  width: 100%;
+  height: auto;
+  max-height: 600px;
   display: block;
-  margin: auto; /* Центрируем */
+  margin: auto;
 }
 
 
@@ -369,6 +394,13 @@ path.active {
   display: flex;
   flex-direction: column;
   gap: 20px;
+
+}
+
+h3 {
+  margin-bottom: 15px;
+  color: #213e60;
+  font-weight: 600;
 }
 
 .data-card {
