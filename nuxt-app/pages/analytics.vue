@@ -80,119 +80,145 @@
 </template>
   
 <script>
-  import LineChart from '~/components/LineChart.vue';
-  import BarChart from '~/components/BarChart.vue';
-  import PieChart from '~/components/PieChart.vue';
-  import axios from 'axios';
-  
-  axios.defaults.baseURL = 'http://127.0.0.1:8000';
-  
-  export default {
-    components: {
-      LineChart,
-      BarChart,
-      PieChart,
-    },
+export default {
     data() {
-      return {
-        filters: {
-          startDate: null,
-          endDate: null,
-        },
-        trends: [],
-        regions: [],
-        anomalies: [],
-        weekdayActivity: { labels: [], datasets: [] },
-        genderDistribution: [],
-        ageGroups: { labels: [], datasets: [] },
-      };
+        return {
+            filters: {
+                startDate: null,
+                endDate: null,
+            },
+            trends: [],
+            regions: [],
+            anomalies: [],
+            weekdayActivity: { labels: [], datasets: [] },
+            genderDistribution: [],
+            ageGroups: { labels: [], datasets: [] },
+        };
     },
     methods: {
-      formatDate(date) {
-        if (!date) return null;
-        const d = new Date(date);
-        return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-      },
-      async fetchAnalytics() {
-        const startDate = this.formatDate(this.filters.startDate);
-        const endDate = this.formatDate(this.filters.endDate);
-        console.log('Фильтры:', { startDate, endDate });
-  
-        try {
-          const [trendsResponse, regionsResponse, anomaliesResponse, ageResponse, weekdayResponse] = await Promise.all([
-            axios.get('/api/analytics/trends', { params: { start_date: startDate, end_date: endDate } }),
-            axios.get('/api/analytics/regions', { params: { start_date: startDate, end_date: endDate } }),
-            axios.get('/api/analytics/anomalies', { params: { start_date: startDate, end_date: endDate } }),
-            axios.get('/api/analytics/age'),
-            axios.get('/api/analytics/weekday-activity'),
-          ]);
-  
-          this.trends = trendsResponse.data.trends.map((item) => ({
-            x: new Date(item.day).toLocaleDateString('ru-RU', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-            }),
-            y: item.count,
-          }));
-  
-  
-          this.regions = {
-            labels: regionsResponse.data.regions.map((region) => region.region),
-            datasets: [
-              {
-                label: 'Количество пользователей',
-                data: regionsResponse.data.regions.map((region) => region.total_users),
-                backgroundColor: '#36A2EB',
-              },
-            ],
-          };
-  
-          this.anomalies = anomaliesResponse.data.anomalies.map((anomaly) => ({
-            day: new Date(anomaly.day).toLocaleDateString('ru-RU', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-            }),
-            count: anomaly.count,
-          }));
-  
-          this.genderDistribution = ageResponse.data.gender || [];
-          this.ageGroups = {
-            labels: Object.keys(ageResponse.data.age_groups),
-            datasets: [
-              {
-                label: 'Возрастные группы',
-                data: Object.values(ageResponse.data.age_groups),
-                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
-              },
-            ],
-          };
-  
-          this.weekdayActivity = {
-            labels: weekdayResponse.data.weekdays.map((item) => item.day),
-            datasets: [
-              {
-                label: 'Количество пользователей',
-                data: weekdayResponse.data.weekdays.map((item) => item.total),
-                backgroundColor: '#36A2EB',
-              },
-            ],
-          };
-        } catch (error) {
-          console.error('Ошибка загрузки данных:', error);
-        }
-      },
-    },
-      mounted() {
-      console.log('Компонент загружен, вызываем fetchAnalytics');
-      this.fetchAnalytics();
-    },
-  };
+        formatDate(date) {
+            if (!date) return null;
+            const d = new Date(date);
+            return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+        },
+        async fetchAnalytics() {
+            const startDate = this.formatDate(this.filters.startDate);
+            const endDate = this.formatDate(this.filters.endDate);
+            console.log('Фильтры:', { startDate, endDate });
 
-  definePageMeta({
-      middleware: 'auth',  // Подключаем middleware для этой страницы
-  });
+            // Получаем токен из localStorage
+            const token = localStorage.getItem('access_token');
+
+            if (!token) {
+                console.error("Токен не найден. Пожалуйста, выполните авторизацию.");
+                return;
+            }
+
+            try {
+                // Используем fetch с авторизацией Bearer Token
+                const [trendsResponse, regionsResponse, anomaliesResponse, ageResponse, weekdayResponse] = await Promise.all([
+                    fetch(`http://127.0.0.1:8000/api/analytics/trends?start_date=${startDate}&end_date=${endDate}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    }).then((res) => res.json()),
+
+                    fetch(`http://127.0.0.1:8000/api/analytics/regions?start_date=${startDate}&end_date=${endDate}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    }).then((res) => res.json()),
+
+                    fetch(`http://127.0.0.1:8000/api/analytics/anomalies?start_date=${startDate}&end_date=${endDate}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    }).then((res) => res.json()),
+
+                    fetch('http://127.0.0.1:8000/api/analytics/age', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    }).then((res) => res.json()),
+
+                    fetch('http://127.0.0.1:8000/api/analytics/weekday-activity', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    }).then((res) => res.json()),
+                ]);
+
+                // Обработка данных трендов
+                this.trends = trendsResponse.trends.map((item) => ({
+                    x: new Date(item.day).toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                    }),
+                    y: item.count,
+                }));
+
+                // Обработка данных по регионам
+                this.regions = {
+                    labels: regionsResponse.regions.map((region) => region.region),
+                    datasets: [
+                        {
+                            label: 'Количество пользователей',
+                            data: regionsResponse.regions.map((region) => region.total_users),
+                            backgroundColor: '#36A2EB',
+                        },
+                    ],
+                };
+
+                // Обработка аномалий
+                this.anomalies = anomaliesResponse.anomalies.map((anomaly) => ({
+                    day: new Date(anomaly.day).toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                    }),
+                    count: anomaly.count,
+                }));
+
+                // Сегментация по полу
+                this.genderDistribution = ageResponse.gender || [];
+                this.ageGroups = {
+                    labels: Object.keys(ageResponse.age_groups),
+                    datasets: [
+                        {
+                            label: 'Возрастные группы',
+                            data: Object.values(ageResponse.age_groups),
+                            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+                        },
+                    ],
+                };
+
+                // Активность по дням недели
+                this.weekdayActivity = {
+                    labels: weekdayResponse.weekdays.map((item) => item.day),
+                    datasets: [
+                        {
+                            label: 'Количество пользователей',
+                            data: weekdayResponse.weekdays.map((item) => item.total),
+                            backgroundColor: '#36A2EB',
+                        },
+                    ],
+                };
+            } catch (error) {
+                console.error('Ошибка загрузки данных:', error);
+            }
+        },
+    },
+    mounted() {
+        console.log('Компонент загружен, вызываем fetchAnalytics');
+        this.fetchAnalytics();
+    },
+};
 </script>
   
 <style>
